@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from ..observability.tracer import NullTracer, Tracer
 from .base import LLMMessage, LLMProvider, LLMResponse, ToolSchema
 from .errors import FatalError, LLMError, TransientError
 
@@ -36,11 +37,17 @@ class LLMRouter:
     """Tries providers in priority order; retries transient errors per-provider before falling
     through to the next one. A FatalError skips straight to the next provider."""
 
-    def __init__(self, providers: list[ProviderEntry], retry_policy: RetryPolicy | None = None):
+    def __init__(
+        self,
+        providers: list[ProviderEntry],
+        retry_policy: RetryPolicy | None = None,
+        tracer: Tracer | None = None,
+    ):
         if not providers:
             raise ValueError("LLMRouter needs at least one provider")
         self._entries = sorted(providers, key=lambda entry: entry.priority)
         self._retry_policy = retry_policy or RetryPolicy()
+        self._tracer = tracer or NullTracer()
 
     async def complete(
         self, messages: list[LLMMessage], tools: list[ToolSchema] | None = None, **kwargs: Any
@@ -60,13 +67,23 @@ class LLMRouter:
     ) -> LLMResponse:
         backoff = self._retry_policy.initial_backoff_seconds
         for attempt in range(1, self._retry_policy.max_attempts + 1):
-            try:
-                return await provider.complete(messages, tools, **kwargs)
-            except FatalError:
-                raise
-            except TransientError:
-                if attempt == self._retry_policy.max_attempts:
+            with self._tracer.span(
+                f"llm:{provider.name}", kind="llm", attempt=attempt, model=kwargs.get("model")
+            ) as span:
+                try:
+                    response = await provider.complete(messages, tools, **kwargs)
+                except FatalError as exc:
+                    span.set_error(str(exc))
                     raise
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * self._retry_policy.backoff_multiplier, self._retry_policy.max_backoff_seconds)
+                except TransientError as exc:
+                    span.set_error(str(exc))
+                    if attempt == self._retry_policy.max_attempts:
+                        raise
+                    await asyncio.sleep(backoff)
+                    backoff = min(
+                        backoff * self._retry_policy.backoff_multiplier, self._retry_policy.max_backoff_seconds
+                    )
+                    continue
+                span.set_output(response.content)
+                return response
         raise AssertionError("unreachable")

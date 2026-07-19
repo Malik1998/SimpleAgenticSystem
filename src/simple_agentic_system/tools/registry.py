@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..llm.base import ToolSchema
+from ..observability.tracer import NullTracer, Tracer
 from .base import Tool, ToolResult
 
 
@@ -14,8 +15,9 @@ class ToolRegistry:
     """Single source of truth for callable tools. Used directly by the main Agent loop,
     and indirectly (via tools/server.py) by code running in the sandbox."""
 
-    def __init__(self) -> None:
+    def __init__(self, tracer: Tracer | None = None) -> None:
         self._tools: dict[str, Tool] = {}
+        self._tracer = tracer or NullTracer()
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
@@ -43,7 +45,14 @@ class ToolRegistry:
 
     async def call(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self.get(name)
-        try:
-            return await tool.run(**arguments)
-        except Exception as exc:  # noqa: BLE001 - normalize any tool failure into a ToolResult
-            return ToolResult(is_error=True, error=str(exc))
+        with self._tracer.span(f"tool:{name}", kind="tool", arguments=arguments) as span:
+            try:
+                result = await tool.run(**arguments)
+            except Exception as exc:  # noqa: BLE001 - normalize any tool failure into a ToolResult
+                span.set_error(str(exc))
+                return ToolResult(is_error=True, error=str(exc))
+            if result.is_error:
+                span.set_error(result.error or "")
+            else:
+                span.set_output(result.output)
+            return result

@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     sandbox_max_concurrent_containers: int = 4
     sandbox_idle_ttl_seconds: int = 600
 
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str | None = None
+
 
 def load_settings() -> Settings:
     return Settings()
