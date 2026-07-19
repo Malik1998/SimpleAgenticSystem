@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from ..context.manager import ContextManager
 from ..llm.base import LLMMessage
@@ -13,6 +14,8 @@ from ..tools.registry import ToolRegistry
 @dataclass
 class AgentConfig:
     max_iterations: int = 8
+    llm_kwargs: dict[str, Any] = field(default_factory=dict)
+    """Passed through to LLMRouter.complete() on every step, e.g. {"temperature": 0.7}."""
 
 
 class Agent:
@@ -47,7 +50,7 @@ class Agent:
         for step in range(self.config.max_iterations):
             with self._tracer.span(f"agent:step:{step}", kind="span"):
                 messages = [LLMMessage(role="system", content=system_prompt), *await self.context.get_messages()]
-                response = await self.llm.complete(messages, self.tools.list_specs())
+                response = await self.llm.complete(messages, self.tools.list_specs(), **self.config.llm_kwargs)
 
                 await self.context.add_message(
                     LLMMessage(role="assistant", content=response.content, tool_calls=response.tool_calls)

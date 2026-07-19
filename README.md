@@ -15,7 +15,20 @@ cp .env.example .env         # fill in whichever API keys you actually have
 uv run pytest -q             # 32 tests, no API keys / Docker required
 uv run python examples/minimal_agent.py      # full agent loop, fake LLM
 uv run python examples/self_repair_demo.py   # RetryingTool + agent-as-fixer
+
+uv sync --extra webui                        # pulls in starlette + uvicorn
+uv run python examples/run_webui.py          # ChatGPT-style UI at http://127.0.0.1:8000
 ```
+
+## Web UI
+
+`webui/` (Starlette app, single static page, no build step) is a thin layer on top of the
+same `Agent` + `LLMRouter` + `ToolRegistry` used everywhere else — it just builds one
+per chat turn from whatever the sidebar is set to. Defaults to the offline demo model
+(no API key needed) with no tools enabled; switch provider/model/temperature/max
+tokens/agent iterations/tools per message from the sidebar. Anthropic/OpenAI/OpenRouter
+become selectable once their key is set in `.env`. Conversation history is kept
+server-side per browser session (in memory) so multi-turn context works across turns.
 
 ## Layers
 
@@ -59,6 +72,10 @@ observability/  Tracer protocol wrapping every llm/tool/agent call as a span.
                 deps), LangfuseTracer (optional `[langfuse]` extra).
 
 config.py       pydantic-settings, loads from .env.
+
+webui/          Starlette app + single static page: ChatGPT-style chat with a settings
+                sidebar (provider, model, temperature, max tokens, agent iterations,
+                tools) that builds a real Agent per turn. `[webui]` extra.
 ```
 
 ## Known limitations

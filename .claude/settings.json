@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/chat -H 'Content-Type: application/json' -d '{\"session_id\":\"browser-test\",\"message\":\"Hi, who are you?\",\"settings\":{\"provider\":\"fake\",\"tools\":[]}}')",
+      "Bash(open http://127.0.0.1:8000/)"
+    ]
+  }
+}

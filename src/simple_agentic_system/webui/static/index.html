@@ -1,0 +1,338 @@
+<title>SimpleAgenticSystem</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #212121;
+    --bg-side: #171717;
+    --bg-input: #2f2f2f;
+    --bg-bubble-user: #2f2f2f;
+    --border: #3a3a3a;
+    --text: #ececec;
+    --text-dim: #9b9b9b;
+    --accent: #10a37f;
+    --accent-hover: #15b98f;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; width: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+  }
+  #app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 300px; flex-shrink: 0; background: var(--bg-side);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  #sidebar h1 {
+    font-size: 15px; font-weight: 600; padding: 14px 16px 4px;
+    margin: 0; color: var(--text);
+  }
+  #new-chat {
+    margin: 8px 12px; padding: 10px 12px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    cursor: pointer; text-align: left; font-size: 14px;
+  }
+  #new-chat:hover { background: var(--bg-input); }
+
+  .section { padding: 10px 16px; border-top: 1px solid var(--border); }
+  .section h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-dim); margin: 4px 0 10px;
+  }
+  label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+  select, input[type="text"], input[type="number"] {
+    width: 100%; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg-input); color: var(--text); font-size: 13px; margin-bottom: 10px;
+  }
+  input[type="range"] { width: 100%; margin: 4px 0 10px; accent-color: var(--accent); }
+  .row-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); }
+  .tool-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .tool-item input { margin: 0; }
+  .tool-item .name { font-weight: 500; }
+  .tool-item .desc { color: var(--text-dim); font-size: 12px; display: block; }
+  #provider-hint { font-size: 12px; color: var(--danger); margin: -6px 0 10px; display: none; }
+
+  /* ---------- Main / chat ---------- */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #messages { flex: 1; overflow-y: auto; padding: 24px 0; }
+  #messages-inner { max-width: 720px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; gap: 18px; }
+  .empty-state { color: var(--text-dim); text-align: center; margin-top: 20vh; font-size: 14px; }
+
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 80%; padding: 10px 14px; border-radius: 14px;
+    white-space: pre-wrap; word-wrap: break-word; line-height: 1.5;
+  }
+  .msg.user .bubble { background: var(--bg-bubble-user); border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: transparent; padding-left: 0; border-bottom-left-radius: 4px; }
+  .msg.error .bubble { color: var(--danger); background: transparent; padding-left: 0; }
+
+  .steps { max-width: 80%; margin-bottom: 4px; display: flex; flex-direction: column; gap: 4px; }
+  .step {
+    font-size: 12.5px; color: var(--text-dim); background: var(--bg-input);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  }
+  .step b { color: var(--text); }
+
+  #composer {
+    border-top: 1px solid var(--border); padding: 14px 20px 18px;
+  }
+  #composer-inner {
+    max-width: 720px; margin: 0 auto; display: flex; align-items: flex-end; gap: 8px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 16px; padding: 10px 10px 10px 16px;
+  }
+  #input {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text);
+    font-size: 15px; resize: none; max-height: 200px; line-height: 1.4; font-family: inherit;
+  }
+  #send {
+    background: var(--accent); border: none; color: #fff; width: 34px; height: 34px;
+    border-radius: 10px; cursor: pointer; flex-shrink: 0; font-size: 16px;
+  }
+  #send:hover { background: var(--accent-hover); }
+  #send:disabled { background: var(--border); cursor: default; }
+  #hint { text-align: center; color: var(--text-dim); font-size: 11.5px; margin-top: 8px; }
+</style>
+
+<div id="app">
+  <div id="sidebar">
+    <h1>SimpleAgenticSystem</h1>
+    <button id="new-chat">+ New chat</button>
+
+    <div class="section">
+      <h2>Model</h2>
+      <label for="provider">Provider</label>
+      <select id="provider"></select>
+      <div id="provider-hint"></div>
+      <label for="model">Model</label>
+      <input id="model" type="text" placeholder="model id" />
+    </div>
+
+    <div class="section">
+      <h2>Parameters</h2>
+      <div class="row-label"><span>Temperature</span><span id="temperature-val">0.7</span></div>
+      <input id="temperature" type="range" min="0" max="1.5" step="0.05" value="0.7" />
+      <label for="max-tokens">Max tokens</label>
+      <input id="max-tokens" type="number" min="1" max="8192" value="1024" />
+      <label for="max-iterations">Max agent iterations</label>
+      <input id="max-iterations" type="number" min="1" max="30" value="8" />
+    </div>
+
+    <div class="section">
+      <h2>Tools</h2>
+      <div id="tools-list"></div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="messages"><div id="messages-inner">
+      <div class="empty-state" id="empty-state">Ask me anything. Defaults to an offline demo model — no API key needed.</div>
+    </div></div>
+    <div id="composer">
+      <div id="composer-inner">
+        <textarea id="input" rows="1" placeholder="Message SimpleAgenticSystem..."></textarea>
+        <button id="send" title="Send">&uarr;</button>
+      </div>
+      <div id="hint">Enter to send · Shift+Enter for a new line</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const el = (id) => document.getElementById(id);
+  const messagesInner = el("messages-inner");
+  const emptyState = el("empty-state");
+  const input = el("input");
+  const sendBtn = el("send");
+  const providerSelect = el("provider");
+  const providerHint = el("provider-hint");
+  const modelInput = el("model");
+  const temperature = el("temperature");
+  const temperatureVal = el("temperature-val");
+  const maxTokens = el("max-tokens");
+  const maxIterations = el("max-iterations");
+  const toolsList = el("tools-list");
+  const newChatBtn = el("new-chat");
+
+  let defaults = null;
+  let sessionId = localStorage.getItem("sas_session_id");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sas_session_id", sessionId);
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.innerText = s;
+    return d.innerHTML;
+  }
+
+  function addMessage(role, text) {
+    emptyState.style.display = "none";
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    messagesInner.appendChild(wrap);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function addSteps(steps) {
+    if (!steps || !steps.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "steps";
+    for (const step of steps) {
+      const div = document.createElement("div");
+      div.className = "step";
+      const toolName = step.name.replace(/^tool:/, "");
+      const args = JSON.stringify(step.attributes.arguments ?? {});
+      const result = step.error ? "error: " + step.error : JSON.stringify(step.output);
+      div.innerHTML = "🔧 <b>" + escapeHtml(toolName) + "</b>(" + escapeHtml(args) + ") → " + escapeHtml(result);
+      wrap.appendChild(div);
+    }
+    messagesInner.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    const box = el("messages");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function currentSettings() {
+    return {
+      provider: providerSelect.value,
+      model: modelInput.value.trim(),
+      temperature: parseFloat(temperature.value),
+      max_tokens: parseInt(maxTokens.value, 10),
+      max_iterations: parseInt(maxIterations.value, 10),
+      tools: Array.from(toolsList.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value),
+    };
+  }
+
+  async function loadDefaults() {
+    const res = await fetch("/api/defaults");
+    defaults = await res.json();
+
+    providerSelect.innerHTML = "";
+    for (const p of defaults.providers) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.label + (p.available || p.id === "fake" ? "" : " (no API key)");
+      providerSelect.appendChild(opt);
+    }
+    providerSelect.value = defaults.defaults.provider;
+    updateModelForProvider();
+    providerSelect.addEventListener("change", updateModelForProvider);
+
+    toolsList.innerHTML = "";
+    for (const t of defaults.tools) {
+      const row = document.createElement("label");
+      row.className = "tool-item";
+      row.innerHTML =
+        '<input type="checkbox" value="' + t.id + '" />' +
+        '<span><span class="name">' + escapeHtml(t.id) + "</span>" +
+        '<span class="desc">' + escapeHtml(t.description) + "</span></span>";
+      toolsList.appendChild(row);
+    }
+
+    temperature.value = defaults.defaults.temperature;
+    temperatureVal.textContent = defaults.defaults.temperature;
+    maxTokens.value = defaults.defaults.max_tokens;
+    maxIterations.value = defaults.defaults.max_iterations;
+  }
+
+  function updateModelForProvider() {
+    const p = defaults.providers.find((x) => x.id === providerSelect.value);
+    if (!p) return;
+    modelInput.value = p.model;
+    modelInput.disabled = p.id === "fake";
+    if (p.id !== "fake" && !p.available) {
+      providerHint.style.display = "block";
+      providerHint.textContent = "No API key configured for this provider — set it in .env first.";
+    } else {
+      providerHint.style.display = "none";
+    }
+  }
+
+  temperature.addEventListener("input", () => {
+    temperatureVal.textContent = temperature.value;
+  });
+
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  sendBtn.addEventListener("click", send);
+
+  newChatBtn.addEventListener("click", async () => {
+    await fetch("/api/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sas_session_id", sessionId);
+    messagesInner.innerHTML = "";
+    messagesInner.appendChild(emptyState);
+    emptyState.style.display = "block";
+  });
+
+  async function send() {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    input.style.height = "auto";
+    addMessage("user", text);
+
+    sendBtn.disabled = true;
+    const pending = addMessage("assistant", "…");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: text, settings: currentSettings() }),
+      });
+      const data = await res.json();
+      pending.parentElement.remove();
+
+      if (data.error) {
+        addSteps(data.steps);
+        addMessage("error", "⚠ " + data.error);
+      } else {
+        addSteps(data.steps);
+        addMessage("assistant", data.reply);
+      }
+    } catch (err) {
+      pending.parentElement.remove();
+      addMessage("error", "⚠ request failed: " + err);
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  loadDefaults();
+})();
+</script>

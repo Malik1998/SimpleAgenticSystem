@@ -1160,13 +1160,17 @@ dependencies = [
 langfuse = [
     { name = "langfuse" },
 ]
+webui = [
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
-    { name = "simple-agentic-system", extra = ["langfuse"] },
+    { name = "simple-agentic-system", extra = ["langfuse", "webui"] },
 ]
 
 [package.metadata]
@@ -1180,15 +1184,17 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "starlette", marker = "extra == 'webui'", specifier = ">=0.27" },
+    { name = "uvicorn", marker = "extra == 'webui'", specifier = ">=0.30" },
 ]
-provides-extras = ["langfuse"]
+provides-extras = ["langfuse", "webui"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.8" },
-    { name = "simple-agentic-system", extras = ["langfuse"] },
+    { name = "simple-agentic-system", extras = ["langfuse", "webui"] },
 ]
 
 [[package]]

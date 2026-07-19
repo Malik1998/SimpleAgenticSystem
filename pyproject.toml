@@ -19,13 +19,14 @@ dependencies = [
 
 [project.optional-dependencies]
 langfuse = ["langfuse>=2.0"]
+webui = ["starlette>=0.27", "uvicorn>=0.30"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.8",
-    "simple-agentic-system[langfuse]",
+    "simple-agentic-system[langfuse,webui]",
 ]
 
 [tool.pytest.ini_options]
